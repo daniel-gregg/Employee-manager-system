@@ -1,0 +1,25 @@
+{
+  "name": "employee-manager-system",
+  "version": "1.0.0",
+  "description": "A console-based employee management system",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/spaniel-boone/Employee-manager-system.git"
+  },
+  "author": "Daniel Gregg",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/spaniel-boone/Employee-manager-system/issues"
+  },
+  "homepage": "https://github.com/spaniel-boone/Employee-manager-system#readme",
+  "dependencies": {
+    "dotenv": "^10.0.0",
+    "inquirer": "^8.1.0",
+    "mysql2": "^2.2.5"
+  }
+}
