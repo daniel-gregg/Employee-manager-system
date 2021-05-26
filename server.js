@@ -30,14 +30,24 @@ const start = async () => {
 }
 
 const selectSecondMenu = (answers) => {
-  if (answers.mainMenu === 'addElement') {
-      addElement();
+  if (answers.mainMenu === 'addEmployee') {
+      addNewEmployee();
     } else if (answers.mainMenu === 'viewElement') {
-      viewElements();  //fix this later to go through a next step first
+      viewElements();
     } else if (answers.mainMenu === 'viewAllEmployees') {
       viewAllEmployees()
     } else if (answers.mainMenu === 'updateRole') {
       updateRole();
+    } else if (answers.mainMenu ==='updateSalary') {
+      updateSalary(); //TODO
+    } else if (answers.mainMenu ==='findManager') {
+      getManager(); 
+    } else if (answers.mainMenu ==='findMinions') {
+      getMinions(); 
+    } else if (answers.mainMenu ==='deleteEmployee') {
+      removeEmployee(); 
+    } else if (answers.mainMenu === 'calculateSalaryCosts') {
+      calcSalaryCosts(); 
     } else {
       connection.end();
     }
@@ -114,10 +124,10 @@ const employeesByDepartment = async(departmentName) => {
 const viewAllEmployees = async() => {
   try {
     const result = await query(`
-    SELECT employees.id, employees.first_name, employees.last_name, roles.title, departments.name
-    FROM departments
-    INNER JOIN roles ON roles.departmentID = departments.id
-    INNER JOIN employees ON employees.roleID = roles.id`)
+      SELECT employees.id, employees.first_name, employees.last_name, roles.title, departments.name 
+      FROM departments
+      INNER JOIN roles ON roles.departmentID = departments.id
+      INNER JOIN employees ON employees.roleID = roles.id`)
 
     var t = new Table
     result.forEach((item) => {
@@ -201,18 +211,226 @@ const updateRole = async() => {
   }
 }
 
+const addNewEmployee = async() => {
+  try {
+    let result = await query('SELECT * FROM employeedb.departments')
+    let answer = await inquirer.prompt(menus.newEmployeeDetailsInit(result))
 
-//TODO
-/* 
-createNewEmployee  //creates a new employee - calls 'createNewRole' if new role needed
-createNewRole  //creates a new role - calls 'createNewDepartment' if new department needed
-createNewDepartment
+    //collect details
+    const newFirstName = answer.newFirstName
+    const newLastName = answer.newLastName
+    const departmentName = answer.departmentName
 
-removeEmployee
-removeRole  //needs to carry out removeEmployee if the role has employees
-removeDepartment  //needs to carry out removeRole if the department has roles
+    result = await query(`
+      SELECT roles.id, roles.title 
+      FROM roles 
+      INNER JOIN departments ON roles.departmentID=departments.id
+      WHERE departments.name = ?`,
+      [departmentName],)
+    answer = await inquirer.prompt(menus.newEmployeeDetailsRole(result))
+    const roleId = answer.roleId
 
-//also:
-getTotalSalary
-getDepartmentSalaryTotals
-getRoleSalaryTotals */
+    const roleTitle = await query(`SELECT roles.title FROM roles WHERE roles.id = ?`,[roleId])
+    console.log(roleTitle[0].title)
+
+    //get manager for new employee
+    result = await query(`
+      SELECT employees.id, employees.first_name, employees.last_name, roles.title, departments.name
+      FROM departments
+      INNER JOIN roles ON roles.departmentID = departments.id
+      INNER JOIN employees ON employees.roleID = roles.id`
+    )
+    
+    answer = await inquirer.prompt(menus.chooseManager(result))
+    const managerId = answer.managerId
+    const manager = await query(`SELECT employees.first_name, employees.last_name FROM employees WHERE employees.id = ?`,[managerId])
+
+    //Insert employee into employees table
+    await query(`
+      INSERT INTO employees (first_name, last_name, roleID, managerID) 
+      VALUE (?,?,?,?)`,
+      [newFirstName,newLastName,roleId,managerId],
+      )
+
+    //Log the created new employee to the user
+    console.log(`
+    Created new employee: ${newFirstName} ${newLastName} working as ${roleTitle[0].title} in ${departmentName} department with ${manager[0].first_name} ${manager[0].last_name} as manager
+    `) 
+
+    start()
+  } catch(err) {
+    if(err) throw err 
+  }
+}
+
+const removeEmployee = async() => {
+  try {
+    //list employees
+    let result = await query(`
+      SELECT employees.id, employees.first_name, employees.last_name, roles.title, departments.name
+      FROM departments
+      INNER JOIN roles ON roles.departmentID = departments.id
+      INNER JOIN employees ON employees.roleID = roles.id`
+    )
+
+    //select the employee to remove
+    let answer = await inquirer.prompt(menus.selectEmployeeToRemove(result))
+    
+    //remove employee from table
+    await query(`
+      DELETE FROM employees
+      WHERE employees.id = ?;`,
+      [answer.employeeId])
+
+    start()
+  } catch(err) {
+    if(err) throw err
+  }
+}
+
+const getManager = async() => {
+  try {
+    let result = await query(`
+      SELECT employees.id, employees.first_name, employees.last_name, roles.title, departments.name, employees.managerID 
+      FROM departments
+      INNER JOIN roles ON roles.departmentID = departments.id
+      INNER JOIN employees ON employees.roleID = roles.id`
+    )
+    
+    let answer = await inquirer.prompt(menus.choosePerson(result))
+
+    result = await query(`
+        SELECT employees.id, employees.first_name, employees.last_name
+        FROM employees
+        WHERE employees.id = ?`, 
+        [answer.personId])
+    
+    if(!result){console.log(`This employee has no listed manager`)} else {
+      console.log(`The manager for this employee is ${result[0].first_name} ${result[0].last_name}`)
+    }
+    
+    start()
+
+  } catch(err) {
+    if(err) throw err
+  }
+}
+
+const getMinions = async() => {
+  try{
+    //List employees as managers
+    let result = await query(`
+      SELECT employees.id, employees.first_name, employees.last_name, roles.title, departments.name
+      FROM departments
+      INNER JOIN roles ON roles.departmentID = departments.id
+      INNER JOIN employees ON employees.roleID = roles.id`
+    )
+
+    //select the employee that is to be checked for having Minions
+    let answer = await inquirer.prompt(menus.chooseManager(result))
+
+    //query database for minions:
+    result = await query(`
+      SELECT employees.id, employees.first_name, employees.last_name, roles.title, departments.name
+      FROM departments
+      INNER JOIN roles ON roles.departmentID = departments.id
+      INNER JOIN employees ON employees.roleID = roles.id
+      WHERE employees.managerID = ?`,
+      [answer.managerId])
+
+    //table the results and write to table
+    var t = new Table
+    result.forEach((item) => {
+      t.cell('Employee ID', item.id)
+      t.cell('First Name', item.first_name)
+      t.cell('Last Name', item.last_name)
+      t.cell('Role Title', item.title)
+      t.cell('Department', item.name)
+      t.newRow()
+    })
+    console.log(t.toString())
+
+    //return to start menu
+    start()
+
+  } catch(err) {
+    if(err) throw err
+  }
+}    
+
+
+const calcSalaryCosts = async() => {
+  try{
+    const answer = await inquirer.prompt(menus.chooseResultLimiter)
+    if (answer.limiter === "role") {
+      salariesByRole()
+    } else if (answer.limiter === "department") {
+      salariesByDepartment()
+    } else {
+      salariesTotal()
+    }
+  } catch (err) {
+    throw err;
+  }
+}
+
+const salariesByRole = async() => {
+  try{
+    let result = await query(`SELECT roles.id, roles.title FROM roles`)
+    let answer = await inquirer.prompt(menus.newEmployeeDetailsRole(result))
+    const roleId = answer.roleId
+    const roleTitle = await query(`SELECT roles.title FROM roles WHERE roles.id = ?`,[roleId])
+    
+    //Then calculate the total
+    result = await query(`
+      SELECT SUM(salary)
+      FROM roles
+      INNER JOIN employees ON employees.roleID = roles.id
+      WHERE employees.roleID = ?;`,
+      [roleId])
+
+    const salaryCost = Object.values(result[0])[0]
+    console.log(`The total salary cost of ${roleTitle[0].title}s is $${salaryCost}`)
+    start()
+  } catch(err) {
+    if(err) throw err
+  }
+}
+
+const salariesByDepartment = async() => {
+  try{
+    let result = await query(`SELECT departments.id, departments.name FROM departments`)
+    let answer = await inquirer.prompt(menus.chooseDepartment(result))
+    const deptId = answer.departmentId
+    const deptName = await query(`SELECT departments.name FROM departments WHERE departments.id = ?`,[deptId])
+    
+    //Then calculate the total
+    result = await query(`
+      SELECT SUM(salary)
+      FROM roles
+      INNER JOIN employees ON employees.roleID = roles.id
+      WHERE roles.departmentID = ?`,
+      [deptId])
+
+    const salaryCost = Object.values(result[0])[0]
+    console.log(`The total salary cost by ${deptName[0].name} Department is $${salaryCost}`)
+    start()
+  } catch(err) {
+    if(err) throw err
+  }
+}
+
+const salariesTotal = async() => {
+  try{
+    let result = await query (`
+      SELECT SUM(salary)
+      FROM roles
+      INNER JOIN employees ON employees.roleID = roles.id`)
+    
+      const salaryCost = Object.values(result[0])[0]
+    console.log(`The salary cost for the whole enterprise is $${salaryCost}`)
+    start()
+  } catch(err) {
+    if(err) throw err
+  }
+}
