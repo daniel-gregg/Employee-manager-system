@@ -33,7 +33,7 @@ const selectSecondMenu = (answers) => {
   if (answers.mainMenu === 'addEmployee') {
       addNewEmployee();
     } else if (answers.mainMenu === 'viewElement') {
-      viewElements();
+      viewDepartments();
     } else if (answers.mainMenu === 'viewAllEmployees') {
       viewAllEmployees()
     } else if (answers.mainMenu === 'updateRole') {
@@ -49,14 +49,6 @@ const selectSecondMenu = (answers) => {
     } else {
       connection.end();
     }
-}
-
-const viewElements = async () => {
-  const answers = await inquirer.prompt(menus.viewElements)
-  if (answers.elementName === "departments") {
-    viewDepartments()
-  }
-  //add view By Role and view Employees
 }
 
 const viewDepartments = async() => {

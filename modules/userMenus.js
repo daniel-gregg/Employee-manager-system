@@ -22,7 +22,6 @@ const viewElements = {
     message: 'Departments',
     choices: [
       { value: "departments", name: "Departments by name" },
-      { value: "roles", name: "Employee Roles by title" },
       { value: "employees", name: "Employees by name" }
     ],
   }
