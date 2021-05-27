@@ -38,8 +38,6 @@ const selectSecondMenu = (answers) => {
       viewAllEmployees()
     } else if (answers.mainMenu === 'updateRole') {
       updateRole();
-    } else if (answers.mainMenu ==='updateSalary') {
-      updateSalary(); //TODO
     } else if (answers.mainMenu ==='findManager') {
       getManager(); 
     } else if (answers.mainMenu ==='findMinions') {

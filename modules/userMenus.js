@@ -8,7 +8,6 @@ const mainMenu = {
           { value: "addEmployee", name: "Add an Employee" },
           { value: "viewElement", name: "View Departments or Roles" },
           { value: "viewAllEmployees", name: "View all employees with department and role information" },
-          { value: "updateSalary", name: "Change salary level of a role"},
           { value: "findManager", name: "Find the manager of an employee"},
           { value: "findMinions", name: "Find the minions of a manager"},
           { value: "deleteEmployee", name: "Remove an employee from the database" },
